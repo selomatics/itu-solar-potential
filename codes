@@ -4,39 +4,39 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 from rasterio.plot import show
 
-# 1. Güneş ışınım raster verisini oku
+# 1. Güneş ışınımı raster verisini yükle
 solar_radiation_raster = "data/itu_solar_potential.tif"
 with rasterio.open(solar_radiation_raster) as src:
     solar_data = src.read(1)
     profile = src.profile
 
-# 2. Gölgeleme ve eğim katsayılarını uygula
-shade_factor = 0.85  # Örnek değer
-orientation_factor = 0.90  # Örnek değer
-solar_data_adjusted = solar_data * shade_factor * orientation_factor
+# 2. Gölgeleme ve yönlendirme faktörlerini uygula
+gölgeleme_faktörü = 0.85  # Örnek değer
+yönlendirme_faktörü = 0.90  # Örnek değer
+düzeltilmiş_solar_data = solar_data * gölgeleme_faktörü * yönlendirme_faktörü
 
-# 3. GIS Bina Verisini Oku
-buildings_shapefile = "data/itu_buildings.shp"
-buildings = gpd.read_file(buildings_shapefile)
+# 3. Bina verisini yükle
+binalar_shapefile = "data/itu_buildings.shp"
+binalar = gpd.read_file(binalar_shapefile)
 
-# 4. Bina bazında ışınım hesapla
-building_solar_potential = []
-for idx, building in buildings.iterrows():
-    # Her bina için ortalama ışınımı hesapla
-    mask = (solar_data_adjusted > 0)  # Basit bir maskeleme işlemi
-    mean_radiation = np.mean(solar_data_adjusted[mask])
-    building_solar_potential.append(mean_radiation)
+# 4. Her bina için ışınım hesapla
+bina_güneş_potansiyeli = []
+for idx, bina in binalar.iterrows():
+    # Her bina için ortalama ışınım değeri hesapla
+    maske = (düzeltilmiş_solar_data > 0)  # Basit bir maskeleme
+    ortalama_ışınım = np.mean(düzeltilmiş_solar_data[maske])
+    bina_güneş_potansiyeli.append(ortalama_ışınım)
 
 # 5. Sonuçları GeoDataFrame'e ekle
-buildings["solar_potential"] = building_solar_potential
+binalar["solar_potential"] = bina_güneş_potansiyeli
 
 # 6. Sonuçları görselleştir
 fig, ax = plt.subplots(figsize=(10, 6))
-show(solar_data_adjusted, cmap="inferno", ax=ax)
-buildings.plot(column="solar_potential", cmap="coolwarm", edgecolor="black", ax=ax)
-plt.title("ITU Kampüsü Güneş Enerjisi Potansiyeli")
+show(düzeltilmiş_solar_data, cmap="inferno", ax=ax)
+binalar.plot(column="solar_potential", cmap="coolwarm", edgecolor="black", ax=ax)
+plt.title("İTÜ Kampüsü Güneş Enerjisi Potansiyeli")
 plt.show()
 
-# 7. Çıkış verisini kaydet
+# 7. Çıkış dosyasını kaydet
 output_shapefile = "output/itu_solar_potential.shp"
-buildings.to_file(output_shapefile)
+binalar.to_file(output_shapefile)
