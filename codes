@@ -1,0 +1,42 @@
+import rasterio
+import numpy as np
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from rasterio.plot import show
+
+# 1. Güneş ışınım raster verisini oku
+solar_radiation_raster = "data/itu_solar_potential.tif"
+with rasterio.open(solar_radiation_raster) as src:
+    solar_data = src.read(1)
+    profile = src.profile
+
+# 2. Gölgeleme ve eğim katsayılarını uygula
+shade_factor = 0.85  # Örnek değer
+orientation_factor = 0.90  # Örnek değer
+solar_data_adjusted = solar_data * shade_factor * orientation_factor
+
+# 3. GIS Bina Verisini Oku
+buildings_shapefile = "data/itu_buildings.shp"
+buildings = gpd.read_file(buildings_shapefile)
+
+# 4. Bina bazında ışınım hesapla
+building_solar_potential = []
+for idx, building in buildings.iterrows():
+    # Her bina için ortalama ışınımı hesapla
+    mask = (solar_data_adjusted > 0)  # Basit bir maskeleme işlemi
+    mean_radiation = np.mean(solar_data_adjusted[mask])
+    building_solar_potential.append(mean_radiation)
+
+# 5. Sonuçları GeoDataFrame'e ekle
+buildings["solar_potential"] = building_solar_potential
+
+# 6. Sonuçları görselleştir
+fig, ax = plt.subplots(figsize=(10, 6))
+show(solar_data_adjusted, cmap="inferno", ax=ax)
+buildings.plot(column="solar_potential", cmap="coolwarm", edgecolor="black", ax=ax)
+plt.title("ITU Kampüsü Güneş Enerjisi Potansiyeli")
+plt.show()
+
+# 7. Çıkış verisini kaydet
+output_shapefile = "output/itu_solar_potential.shp"
+buildings.to_file(output_shapefile)
